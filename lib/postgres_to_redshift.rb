@@ -22,11 +22,17 @@ class PostgresToRedshift
     update_tables = PostgresToRedshift.new
 
     update_tables.tables.each do |table|
-      target_connection.exec("CREATE TABLE IF NOT EXISTS #{schema}.#{target_connection.quote_ident(table.target_table_name)} (#{table.columns_for_create})")
+      #if table.target_table_name == 'invoice_items'
+        sqlcreate = "CREATE TABLE IF NOT EXISTS #{schema}.#{target_connection.quote_ident(table.target_table_name)} (#{table.columns_for_create})"
 
-      update_tables.copy_table(table)
+        #puts "\n#{sqlcreate}\n"
 
-      update_tables.import_table(table)
+        target_connection.exec(sqlcreate)
+
+        update_tables.copy_table(table)
+
+        update_tables.import_table(table)
+      #end
     end
   end
 
@@ -131,7 +137,7 @@ class PostgresToRedshift
   def import_table(table)
     puts "Importing #{table.target_table_name}"
     schema = self.class.schema
-    
+
     target_connection.exec("DROP TABLE IF EXISTS #{schema}.#{table.target_table_name}_updating")
 
     target_connection.exec("BEGIN;")

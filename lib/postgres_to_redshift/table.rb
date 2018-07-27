@@ -37,6 +37,7 @@ class PostgresToRedshift
 
     def columns_for_create
       columns.map do |column|
+        # puts column.to_yaml
         %Q["#{column.name}" #{column.data_type_for_copy}]
       end.join(", ")
     end
