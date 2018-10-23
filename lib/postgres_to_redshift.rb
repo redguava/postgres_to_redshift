@@ -22,17 +22,18 @@ class PostgresToRedshift
     update_tables = PostgresToRedshift.new
 
     update_tables.tables.each do |table|
-      #if table.target_table_name == 'invoice_items'
-        sqlcreate = "CREATE TABLE IF NOT EXISTS #{schema}.#{target_connection.quote_ident(table.target_table_name)} (#{table.columns_for_create})"
+      if (include_tables.length == 0 || include_tables.include?(table.target_table_name))
+        if (exclude_tables.length == 0 || ! exclude_tables.include?(table.target_table_name))
+          sqlcreate = "CREATE TABLE IF NOT EXISTS #{schema}.#{target_connection.quote_ident(table.target_table_name)} (#{table.columns_for_create})"
 
-        #puts "\n#{sqlcreate}\n"
+          #puts "\n#{sqlcreate}\n"
 
-        target_connection.exec(sqlcreate)
+          target_connection.exec(sqlcreate)
+          update_tables.copy_table(table)
 
-        update_tables.copy_table(table)
-
-        update_tables.import_table(table)
-      #end
+          update_tables.import_table(table)
+        end
+      end
     end
   end
 
@@ -61,8 +62,16 @@ class PostgresToRedshift
     @target_connection
   end
 
+  def self.exclude_tables
+    ENV.fetch('POSTGRES_TO_REDSHIFT_EXCLUDE_TABLES', '').split(/[\s,]+/)
+  end
+
+  def self.include_tables
+    ENV.fetch('POSTGRES_TO_REDSHIFT_INCLUDE_TABLES', '').split(/[\s,]+/)
+  end
+
   def self.schema
-    ENV.fetch('POSTGRES_TO_REDSHIFT_TARGET_SCHEMA')
+    ENV.fetch('POSTGRES_TO_REDSHIFT_TARGET_SCHEMA', 'public')
   end
 
   def source_connection
@@ -146,7 +155,7 @@ class PostgresToRedshift
 
     target_connection.exec("CREATE TABLE #{schema}.#{target_connection.quote_ident(table.target_table_name)} (#{table.columns_for_create})")
 
-    target_connection.exec("COPY #{schema}.#{target_connection.quote_ident(table.target_table_name)} FROM 's3://#{ENV['S3_DATABASE_EXPORT_BUCKET']}/export/#{table.target_table_name}.psv.gz' CREDENTIALS 'aws_access_key_id=#{ENV['S3_DATABASE_EXPORT_ID']};aws_secret_access_key=#{ENV['S3_DATABASE_EXPORT_KEY']}' GZIP TRUNCATECOLUMNS ESCAPE DELIMITER as '|';")
+    target_connection.exec("COPY #{schema}.#{target_connection.quote_ident(table.target_table_name)} FROM 's3://#{ENV['S3_DATABASE_EXPORT_BUCKET']}/export/#{table.target_table_name}.psv.gz' CREDENTIALS 'aws_access_key_id=#{ENV['S3_DATABASE_EXPORT_ID']};aws_secret_access_key=#{ENV['S3_DATABASE_EXPORT_KEY']}' ACCEPTINVCHARS GZIP TRUNCATECOLUMNS ESCAPE DELIMITER as '|';")
 
     target_connection.exec("COMMIT;")
   end
