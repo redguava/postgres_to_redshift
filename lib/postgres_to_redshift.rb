@@ -26,8 +26,6 @@ class PostgresToRedshift
         if (exclude_tables.length == 0 || ! exclude_tables.include?(table.target_table_name))
           sqlcreate = "CREATE TABLE IF NOT EXISTS #{schema}.#{target_connection.quote_ident(table.target_table_name)} (#{table.columns_for_create})"
 
-          #puts "\n#{sqlcreate}\n"
-
           target_connection.exec(sqlcreate)
           update_tables.copy_table(table)
 
